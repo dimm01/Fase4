@@ -339,12 +339,11 @@ def probar_modulo3():
         print("Capturado: servicio no disponible")
 
 
-if __name__ == "__main__":
     probar_modulo3()
 
 
 # ============================================================
-# MÓDULO 4 - Lili Mejia
+# MÓDULO 4 - Belsi Mejia Caro
 # Clase Reserva con estados, confirmación y cancelación
 # ============================================================
 

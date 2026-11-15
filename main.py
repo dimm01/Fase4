@@ -339,8 +339,6 @@ def probar_modulo3():
         print("Capturado: servicio no disponible")
 
 
-    probar_modulo3()
-
 
 # ============================================================
 # MÓDULO 4 - Belsi Mejia Caro

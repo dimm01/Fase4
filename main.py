@@ -341,3 +341,204 @@ def probar_modulo3():
 
 if __name__ == "__main__":
     probar_modulo3()
+
+
+# ============================================================
+# MÓDULO 4 - Lili Mejia
+# Clase Reserva con estados, confirmación y cancelación
+# ============================================================
+
+class Reserva(Entidad):
+    """Integra Cliente + Servicio. Estados: PENDIENTE -> CONFIRMADA -> PROCESADA / CANCELADA"""
+
+    _contador_reservas = 0
+
+    def __init__(self, id_reserva: int, cliente, servicio, duracion_horas):
+        try:
+            if cliente is None:
+                raise ErrorReservaInvalida("La reserva requiere un cliente válido.")
+            if servicio is None:
+                raise ErrorReservaInvalida("La reserva requiere un servicio válido.")
+            # Usamos la misma función que usa el Módulo 3: es_numero_positivo()
+            if not es_numero_positivo(duracion_horas):
+                raise ErrorReservaInvalida(f"Duración inválida: {duracion_horas}. Debe ser mayor a 0.")
+
+            super().__init__(id_reserva)
+            Reserva._contador_reservas += 1
+            self._cliente = cliente
+            self._servicio = servicio
+            self._duracion = duracion_horas
+            self._estado = "PENDIENTE"
+            self._costo_total = 0.0
+
+        except (ErrorReservaInvalida, ErrorDatoInvalido) as e:
+            registrar_log("ERROR", f"Error al crear Reserva: {e}")
+            raise ErrorReservaInvalida(f"No se pudo crear la reserva: {e}") from e
+        else:
+            registrar_log("INFO", f"Reserva {self.id} creada en estado PENDIENTE")
+        finally:
+            print(f"--> Intento de creación de reserva finalizado.")
+
+    @property
+    def cliente(self): return self._cliente
+    @property
+    def servicio(self): return self._servicio
+    @property
+    def duracion(self): return self._duracion
+    @property
+    def estado(self): return self._estado
+    @property
+    def costo_total(self): return self._costo_total
+
+    # --- Obligatorios de Entidad ---
+    def describir(self) -> str:
+        nombre_cliente = getattr(self._cliente, "nombre", str(self._cliente))
+        nombre_servicio = getattr(self._servicio, "nombre", str(self._servicio))
+        return f"Reserva #{self.id} | Cliente: {nombre_cliente} | Servicio: {nombre_servicio} | Dur: {self._duracion} | Estado: {self._estado} | Costo: ${self._costo_total:,.0f}"
+
+    def validar_parametros(self):
+        """Igual que hace el Módulo 3: valida y lanza excepción si algo está mal."""
+        if self._cliente is None or self._servicio is None:
+            raise ErrorReservaInvalida("Cliente o servicio no puede ser None.")
+        if not es_numero_positivo(self._duracion):
+            raise ErrorReservaInvalida("Duración inválida.")
+        if self._estado not in ["PENDIENTE", "CONFIRMADA", "CANCELADA", "PROCESADA"]:
+            raise ErrorReservaInvalida(f"Estado inválido: {self._estado}")
+
+    def validar(self) -> bool:
+        try:
+            self.validar_parametros()
+            return True
+        except Exception as e:
+            registrar_log("ERROR", f"Error en validar() Reserva {self.id}: {e}")
+            return False
+
+    # --- Sobrecarga: mismo nombre que Módulo 3, con impuesto y descuento ---
+    def calcular_costo(self, impuesto=0.0, descuento=0.0):
+        """
+        Delega el cálculo al Servicio real.
+        Ejemplo: Reserva de Sala 50000 x 2h = 100000
+        Con impuesto 0.19 y descuento 0.10 = 100000 * 0.90 * 1.19 = 107100
+        """
+        try:
+            total = self._servicio.calcular_costo(self._duracion, impuesto=impuesto, descuento=descuento)
+            self._costo_total = round(total, 2)
+            return self._costo_total
+        except (ErrorServicioNoDisponible, ErrorCalculoInconsistente, ErrorDatoInvalido) as e:
+            registrar_log("ERROR", f"Error calculando costo Reserva {self.id}: {e}")
+            raise ErrorReservaInvalida(f"Error en cálculo de costo: {e}") from e
+
+    def confirmar(self, impuesto=0.0, descuento=0.0):
+        """PENDIENTE -> CONFIRMADA. Solo si el servicio está disponible."""
+        try:
+            if self._estado != "PENDIENTE":
+                raise ErrorOperacionNoPermitida(f"No se puede confirmar. Estado actual: {self._estado}. Debe estar PENDIENTE.")
+            # Propiedad real del Módulo 3: .disponible
+            if not self._servicio.disponible:
+                raise ErrorServicioNoDisponible(f"Servicio {self._servicio.nombre} no disponible.")
+            self._estado = "CONFIRMADA"
+            self.calcular_costo(impuesto=impuesto, descuento=descuento)
+        except (ErrorOperacionNoPermitida, ErrorServicioNoDisponible, ErrorReservaInvalida) as e:
+            registrar_log("ERROR", f"Error al confirmar Reserva {self.id}: {e}")
+            print(f"❌ No se pudo confirmar: {e}")
+            return False
+        else:
+            registrar_log("INFO", f"Reserva {self.id} CONFIRMADA. Costo: ${self._costo_total:,.0f}")
+            print(f"✅ Reserva {self.id} CONFIRMADA - ${self._costo_total:,.0f}")
+            return True
+        finally:
+            print(f"--> Proceso de confirmación finalizado para Reserva {self.id}")
+
+    def cancelar(self, motivo="Sin motivo"):
+        """PENDIENTE o CONFIRMADA -> CANCELADA"""
+        try:
+            if self._estado == "CANCELADA":
+                raise ErrorOperacionNoPermitida("La reserva ya está cancelada.")
+            if self._estado == "PROCESADA":
+                raise ErrorOperacionNoPermitida("No se puede cancelar una reserva ya procesada.")
+            self._estado = "CANCELADA"
+        except ErrorOperacionNoPermitida as e:
+            registrar_log("ERROR", f"Error al cancelar Reserva {self.id}: {e}")
+            print(f"❌ No se pudo cancelar: {e}")
+            return False
+        else:
+            registrar_log("INFO", f"Reserva {self.id} CANCELADA. Motivo: {motivo}")
+            print(f"✅ Reserva {self.id} CANCELADA. Motivo: {motivo}")
+            return True
+
+    def procesar(self):
+        """CONFIRMADA -> PROCESADA"""
+        try:
+            if self._estado != "CONFIRMADA":
+                raise ErrorOperacionNoPermitida(f"Solo se puede procesar una reserva CONFIRMADA. Estado actual: {self._estado}")
+            self._estado = "PROCESADA"
+        except ErrorOperacionNoPermitida as e:
+            registrar_log("ERROR", f"Error al procesar Reserva {self.id}: {e}")
+            print(f"❌ No se pudo procesar: {e}")
+            return False
+        else:
+            registrar_log("INFO", f"Reserva {self.id} PROCESADA con éxito.")
+            print(f"✅ Reserva {self.id} PROCESADA con éxito.")
+            return True
+        finally:
+            print(f"--> Proceso de reserva {self.id} terminado.")
+
+# -------------------------------
+# Prueba del módulo 4
+# -------------------------------
+def probar_modulo4():
+    """Prueba Módulo 4 con los 3 servicios REALES del Módulo 3."""
+    print("\n--- MÓDULO 4: prueba de reservas ---")
+
+    # Cliente simple para probar, hasta que el Módulo 2 se una a main.py
+    class ClientePrueba:
+        def __init__(self, nombre): self.nombre = nombre
+
+    c1 = ClientePrueba("Cliente de Prueba")
+
+    # Usamos los mismos servicios que creó Nairobys en probar_modulo3()
+    s_sala = ReservaSala(1, "Sala Norte", 50000, 10)
+    s_equipo = AlquilerEquipo(2, "Proyector", 30000, deposito=20000)
+    s_asesoria = AsesoriaEspecializada(3, "Asesoría en Python", 80000, nivel="senior")
+
+    # 1. Sala: 50000 x 2 = 100000
+    r1 = Reserva(1, c1, s_sala, 2)
+    print(r1)
+    r1.confirmar()
+    r1.procesar()
+    print(r1)
+
+    # 2. Equipo con impuesto 19% y descuento 10%: (30000*2+20000)=80000 -> 80000*0.90*1.19=85680
+    r2 = Reserva(2, c1, s_equipo, 2)
+    r2.confirmar(impuesto=0.19, descuento=0.10)
+    print(r2)
+    r2.cancelar("Cliente se arrepintió")
+    r2.confirmar()  # Debe fallar: ya está CANCELADA
+
+    # 3. Asesoría senior: 80000*1.5*2 = 240000
+    r3 = Reserva(3, c1, s_asesoria, 2)
+    r3.confirmar()
+    print(r3)
+
+    # 4. Errores controlados, el programa NO se detiene
+    print("\n--- Casos inválidos (el programa NO se detiene) ---")
+    try:
+        r4 = Reserva(4, c1, s_sala, -2)  # duración negativa
+    except ErrorReservaInvalida:
+        print("Capturado: reserva con duración inválida")
+
+    try:
+        r5 = Reserva(5, c1, s_sala, 0)  # duración cero
+    except ErrorReservaInvalida:
+        print("Capturado: reserva con duración cero")
+
+    # Servicio no disponible
+    s_equipo.disponible = False
+    r6 = Reserva(6, c1, s_equipo, 1)
+    r6.confirmar()  # Debe fallar controlado
+
+    print("--- FIN PRUEBA MÓDULO 4 ---")
+
+if __name__ == "__main__":
+    probar_modulo3()
+    probar_modulo4()

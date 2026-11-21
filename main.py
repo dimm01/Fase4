@@ -733,6 +733,499 @@ class Reserva(Entidad):
 
     print("--- FIN PRUEBA MÓDULO 4 ---")'''
 
+
+# ============================================================================
+# MÓDULO 5 - Willinton Andres Rosado Caceres
+# Menú por consola y datos de simulación de 12 operaciones
+# Fase 4 - Programación 213023 - Ejercicio 1 Software FJ
+# Repo del grupo: dimm01/Fase4
+# ============================================================================
+# QUÉ USA DE LOS OTROS MÓDULOS (no los redefine, los USA):
+# - Módulo 1: registrar_log(), ARCHIVO_LOG, ErrorSistema, ErrorDatoInvalido,
+#   ErrorServicioNoDisponible, ErrorReservaInvalida, ErrorOperacionNoPermitida, Entidad
+# - Módulo 2: Cliente(documento, nombre, correo, telefono)
+#   OJO: Cliente lanza ValueError / TypeError si el dato es inválido, no ErrorSistema.
+#   Por eso en este módulo se captura Exception, no solo ErrorSistema.
+# - Módulo 3: ReservaSala(id, nombre, tarifa_hora, capacidad),
+#   AlquilerEquipo(id, nombre, tarifa_dia, deposito),
+#   AsesoriaEspecializada(id, nombre, tarifa_hora, nivel)
+#   Niveles válidos del Módulo 3: junior, senior, experto
+#   Servicio.calcular_costo(duracion, impuesto, descuento) - sobrecarga con opcionales
+# - Módulo 4: Reserva(id, cliente, servicio, duracion_horas)
+#   Reserva.confirmar(impuesto, descuento) -> True/False
+#   Reserva.cancelar(motivo) -> True/False
+#   Reserva.procesar() -> True/False
+#   Reserva.calcular_costo(impuesto, descuento)
+# REGLA DEL GRUPO: no se rompe lo de los demás, se respetan nombres de clases y métodos.
+# ============================================================================
+
+# --- Datos de la simulación de 12 operaciones (Módulo 5) ---
+# Los datos inválidos son a propósito para demostrar el control de errores.
+DATOS_MODULO5_CLIENTES = [
+    {"documento": "12345678", "nombre": "Ana Maria Perez", "correo": "ana.perez@unad.edu.co", "telefono": "3001234567"},
+    {"documento": "87654321", "nombre": "Juan Lopez", "correo": "juan.sin.arroba", "telefono": "3109876543"},
+    {"documento": "", "nombre": "Maria Gomez", "correo": "maria.gomez@unad.edu.co", "telefono": "3201112233"},
+]
+
+OPERACIONES_12_MODULO5 = [
+    (1, "Registrar cliente válido"),
+    (2, "Registrar cliente inválido (correo)"),
+    (3, "Registrar cliente inválido (documento vacío)"),
+    (4, "Crear servicio válido - Sala"),
+    (5, "Crear servicio válido - Equipo"),
+    (6, "Crear servicio válido - Asesoría"),
+    (7, "Crear servicio inválido (tarifa negativa)"),
+    (8, "Crear servicio inválido (capacidad 0)"),
+    (9, "Reserva exitosa + confirmar + procesar + sobrecarga"),
+    (10, "Reserva fallida - servicio no disponible"),
+    (11, "Reserva fallida - duración inválida"),
+    (12, "Operación no permitida + cálculo inconsistente"),
+]
+
+
+def _modulo5_buscar_cliente(clientes, documento):
+    """Busca un cliente por documento. Devuelve el cliente o None."""
+    for c in clientes:
+        try:
+            if str(getattr(c, "documento", "")) == str(documento):
+                return c
+        except Exception:
+            continue
+    return None
+
+
+def _modulo5_buscar_servicio(servicios, nombre):
+    """Busca un servicio por nombre. Devuelve el servicio o None."""
+    for s in servicios:
+        try:
+            if str(getattr(s, "nombre", "")).lower() == str(nombre).lower():
+                return s
+        except Exception:
+            continue
+    return None
+
+
+def _modulo5_buscar_reserva(reservas, id_reserva):
+    """Busca una reserva por ID. Devuelve la reserva o None."""
+    for r in reservas:
+        try:
+            if str(getattr(r, "id", "")) == str(id_reserva):
+                return r
+        except Exception:
+            continue
+    return None
+
+
+def ejecutar_simulacion_12_operaciones_modulo5(clientes, servicios, reservas):
+    """
+    Ejecuta las 12 operaciones en orden.
+    Recibe las LISTAS del sistema (se modifican en sitio, no usa base de datos).
+    Cada operación tiene su propio try/except para que un error NO detenga las demás.
+    Demuestra: try/except, try/except/else, try/except/finally y encadenamiento (raise ... from).
+    Devuelve la lista de resultados.
+    """
+    resultados = []
+
+    def registrar(n, titulo, resultado, estado):
+        resultados.append({"n": n, "titulo": titulo, "resultado": resultado, "estado": estado})
+        simbolo = "✅" if estado == "EXITO" else "⚠️"
+        print(f"\n{simbolo} Op. {n}: {titulo}")
+        print(f"   -> {resultado}")
+
+    print("\n" + "=" * 68)
+    print("  SIMULACIÓN AUTOMÁTICA - 12 OPERACIONES - MÓDULO 5")
+    print("  Software FJ - Fase 4 Programación 213023 - Willinton Rosado")
+    print("=" * 68)
+    print("Regla: cada error se captura, se registra en eventos.log y el programa SIGUE.")
+
+    cliente_valido = None
+    sala_valida = None
+    reserva_exitosa = None
+
+    # Op 1 - Cliente válido (Módulo 2 real)
+    try:
+        d = DATOS_MODULO5_CLIENTES[0]
+        cliente_valido = Cliente(documento=d["documento"], nombre=d["nombre"], correo=d["correo"], telefono=d["telefono"])
+        clientes.append(cliente_valido)
+        registrar_log("INFO", f"Modulo 5 Op.1 Cliente registrado: {cliente_valido}")
+    except Exception as e:
+        registrar(1, OPERACIONES_12_MODULO5[0][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+    else:
+        registrar(1, OPERACIONES_12_MODULO5[0][1], f"Cliente registrado: {cliente_valido}", "EXITO")
+    finally:
+        pass
+
+    # Op 2 - Cliente inválido correo (Cliente lanza ValueError)
+    try:
+        d = DATOS_MODULO5_CLIENTES[1]
+        cliente_malo = Cliente(documento=d["documento"], nombre=d["nombre"], correo=d["correo"], telefono=d["telefono"])
+        clientes.append(cliente_malo)
+    except Exception as e:
+        registrar(2, OPERACIONES_12_MODULO5[1][1], f"ERROR CONTROLADO: {type(e).__name__}: {e} | El sistema siguió funcionando.", "ERROR_CONTROLADO")
+        registrar_log("ERROR", f"Modulo 5 Op.2 error controlado: {e}")
+    else:
+        registrar(2, OPERACIONES_12_MODULO5[1][1], "No se detectó el error (inesperado).", "ERROR_CONTROLADO")
+
+    # Op 3 - Cliente inválido documento vacío
+    try:
+        d = DATOS_MODULO5_CLIENTES[2]
+        cliente_malo2 = Cliente(documento=d["documento"], nombre=d["nombre"], correo=d["correo"], telefono=d["telefono"])
+        clientes.append(cliente_malo2)
+    except Exception as e:
+        registrar(3, OPERACIONES_12_MODULO5[2][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+        registrar_log("ERROR", f"Modulo 5 Op.3 error controlado: {e}")
+    else:
+        registrar(3, OPERACIONES_12_MODULO5[2][1], "No se detectó el error (inesperado).", "ERROR_CONTROLADO")
+
+    # Op 4 - Servicio válido Sala (Módulo 3 real)
+    try:
+        sala_valida = ReservaSala(101, "Sala Reuniones A", 80000, 20)
+        servicios.append(sala_valida)
+    except Exception as e:
+        registrar(4, OPERACIONES_12_MODULO5[3][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+    else:
+        registrar(4, OPERACIONES_12_MODULO5[3][1], f"Servicio creado: {sala_valida.describir()}", "EXITO")
+
+    # Op 5 - Servicio válido Equipo
+    equipo_valido = None
+    try:
+        equipo_valido = AlquilerEquipo(102, "Alquiler Portatil", 40000, deposito=20000)
+        servicios.append(equipo_valido)
+    except Exception as e:
+        registrar(5, OPERACIONES_12_MODULO5[4][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+    else:
+        registrar(5, OPERACIONES_12_MODULO5[4][1], f"Servicio creado: {equipo_valido.describir()}", "EXITO")
+
+    # Op 6 - Servicio válido Asesoría (nivel senior, válido en Módulo 3)
+    asesoria_valida = None
+    try:
+        asesoria_valida = AsesoriaEspecializada(103, "Asesoria Python", 60000, nivel="senior")
+        servicios.append(asesoria_valida)
+    except Exception as e:
+        registrar(6, OPERACIONES_12_MODULO5[5][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+    else:
+        registrar(6, OPERACIONES_12_MODULO5[5][1], f"Servicio creado: {asesoria_valida.describir()}", "EXITO")
+
+    # Op 7 - Servicio inválido tarifa negativa
+    try:
+        malo = ReservaSala(104, "Sala Precio Malo", -5000, 10)
+        servicios.append(malo)
+    except Exception as e:
+        registrar(7, OPERACIONES_12_MODULO5[6][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+        registrar_log("ERROR", f"Modulo 5 Op.7 error controlado: {e}")
+    else:
+        registrar(7, OPERACIONES_12_MODULO5[6][1], "No se detectó el error (inesperado).", "ERROR_CONTROLADO")
+
+    # Op 8 - Servicio inválido capacidad 0
+    try:
+        malo2 = ReservaSala(105, "Sala Capacidad Cero", 50000, 0)
+        servicios.append(malo2)
+    except Exception as e:
+        registrar(8, OPERACIONES_12_MODULO5[7][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+    else:
+        registrar(8, OPERACIONES_12_MODULO5[7][1], "No se detectó el error (inesperado).", "ERROR_CONTROLADO")
+
+    # Op 9 - Reserva exitosa + confirmar + procesar + sobrecarga (Módulo 4 real)
+    try:
+        reserva_exitosa = Reserva(201, cliente_valido, sala_valida, 3)
+        reservas.append(reserva_exitosa)
+        # Confirmar con impuesto 19% y descuento 10%
+        # Sala: 80000 x 3 = 240000 -> 240000 x 0.90 x 1.19 = 257040
+        ok_conf = reserva_exitosa.confirmar(impuesto=0.19, descuento=0.10)
+        if not ok_conf:
+            raise ErrorReservaInvalida("Confirmar devolvió False (ver log del Módulo 4).")
+        # Procesar: PENDIENTE -> CONFIRMADA -> PROCESADA
+        ok_proc = reserva_exitosa.procesar()
+        if not ok_proc:
+            raise ErrorReservaInvalida("Procesar devolvió False.")
+        # Sobrecarga: mismo método calcular_costo con 0, 1 y 2 argumentos opcionales
+        # Se usa una reserva nueva solo para demostrar sobrecarga sin tocar la ya procesada
+        reserva_demo = Reserva(209, cliente_valido, sala_valida, 3)
+        costo_sin = reserva_demo.calcular_costo()
+        costo_con_imp = reserva_demo.calcular_costo(impuesto=0.19)
+        costo_con_ambos = reserva_demo.calcular_costo(impuesto=0.19, descuento=0.10)
+    except Exception as e:
+        causa = f" | Causa: {e.__cause__}" if getattr(e, "__cause__", None) else ""
+        registrar(9, OPERACIONES_12_MODULO5[8][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}{causa}", "ERROR_CONTROLADO")
+    else:
+        registrar(9, OPERACIONES_12_MODULO5[8][1],
+                  f"Reserva 201 confirmada y procesada. Costo total: ${reserva_exitosa.costo_total:,.0f} | "
+                  f"Sobrecarga: sin args=${costo_sin:,.0f}, con impuesto=${costo_con_imp:,.0f}, con ambos=${costo_con_ambos:,.0f}",
+                  "EXITO")
+
+    # Op 10 - Reserva fallida servicio no disponible
+    # En Módulo 4, confirmar() devuelve False y NO lanza excepción cuando no está disponible.
+    # Por eso aquí se detecta el False como ERROR CONTROLADO.
+    try:
+        sala_no_disp = ReservaSala(106, "Sala No Disponible", 70000, 15, disponible=False)
+        servicios.append(sala_no_disp)
+        reserva_fallida = Reserva(202, cliente_valido, sala_no_disp, 2)
+        reservas.append(reserva_fallida)
+        ok = reserva_fallida.confirmar()
+        if ok:
+            registrar(10, OPERACIONES_12_MODULO5[9][1], "No se detectó el error (inesperado, confirmar devolvió True).", "ERROR_CONTROLADO")
+        else:
+            registrar(10, OPERACIONES_12_MODULO5[9][1],
+                      "ERROR CONTROLADO: confirmar() devolvió False porque el servicio no está disponible | Reserva no confirmada, sistema estable.",
+                      "ERROR_CONTROLADO")
+    except Exception as e:
+        causa = f" | Causa: {e.__cause__}" if getattr(e, "__cause__", None) else ""
+        registrar(10, OPERACIONES_12_MODULO5[9][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}{causa}", "ERROR_CONTROLADO")
+
+    # Op 11 - Reserva fallida duración inválida (0)
+    try:
+        Reserva(203, cliente_valido, sala_valida, 0)
+    except Exception as e:
+        registrar(11, OPERACIONES_12_MODULO5[10][1], f"ERROR CONTROLADO: {type(e).__name__}: {e}", "ERROR_CONTROLADO")
+    else:
+        registrar(11, OPERACIONES_12_MODULO5[10][1], "No se detectó el error (inesperado).", "ERROR_CONTROLADO")
+
+    # Op 12 - Operación no permitida + cálculo inconsistente
+    mensaje_12a = ""
+    mensaje_12b = ""
+    try:
+        reserva_12 = Reserva(204, cliente_valido, sala_valida, 1)
+        reservas.append(reserva_12)
+        primera = reserva_12.cancelar("Prueba Módulo 5")
+        mensaje_12a = f"Primera cancelación -> {primera} (True = cancelada). "
+        # Segunda cancelación debe devolver False (ya está CANCELADA)
+        segunda = reserva_12.cancelar("Segunda vez")
+        if segunda:
+            mensaje_12a += "Segunda cancelación inesperadamente True."
+        else:
+            mensaje_12a += "Segunda cancelación -> ERROR CONTROLADO: cancelar() devolvió False (ya estaba CANCELADA)."
+    except Exception as e:
+        mensaje_12a += f" | ERROR CONTROLADO: {type(e).__name__}: {e}"
+    try:
+        # Descuento 150% (1.5) debe fallar en Módulo 3
+        sala_valida.calcular_costo(2, impuesto=0.19, descuento=1.5)
+    except Exception as e:
+        causa = f" | Causa: {e.__cause__}" if getattr(e, "__cause__", None) else ""
+        mensaje_12b = f"Cálculo inconsistente -> ERROR CONTROLADO: {type(e).__name__}: {e}{causa}"
+    else:
+        mensaje_12b = "Cálculo inconsistente no detectado (inesperado)."
+    registrar(12, OPERACIONES_12_MODULO5[11][1], f"{mensaje_12a} | {mensaje_12b}", "ERROR_CONTROLADO")
+
+    print("\n" + "-" * 68)
+    print("  RESUMEN DE LA SIMULACIÓN")
+    print("-" * 68)
+    exitos = sum(1 for r in resultados if r["estado"] == "EXITO")
+    controlados = sum(1 for r in resultados if r["estado"] == "ERROR_CONTROLADO")
+    print(f"  Total: {len(resultados)} / 12 | Exitosas: {exitos} | Errores controlados: {controlados}")
+    print(f"  El programa NUNCA se detuvo por un error.")
+    print("-" * 68)
+    registrar_log("INFO", f"Modulo 5 Simulación 12 ops completada: {exitos} éxitos, {controlados} controlados")
+    return resultados
+
+
+def mostrar_menu_modulo5():
+    """Imprime el menú del Módulo 5."""
+    print("\n" + "=" * 68)
+    print("  SOFTWARE FJ - MÓDULO 5 - Menú por consola")
+    print("  Fase 4 - Programación 213023 - Willinton Andres Rosado Caceres")
+    print("=" * 68)
+    print("  1. Registrar cliente")
+    print("  2. Listar clientes")
+    print("  3. Listar servicios")
+    print("  4. Crear reserva manual")
+    print("  5. Listar reservas")
+    print("  6. Confirmar reserva (por ID)")
+    print("  7. Cancelar reserva (por ID)")
+    print("  8. Procesar reserva (por ID)")
+    print("  9. Ejecutar simulación automática de 12 operaciones")
+    print("  10. Ver reporte + ver log")
+    print("  0. Salir")
+    print("=" * 68)
+
+
+def ejecutar_menu_modulo5(clientes, servicios, reservas):
+    """
+    Bucle principal del menú del Módulo 5.
+    Recibe las listas del sistema para trabajar sobre las mismas.
+    Cada opción tiene try/except para que un dato malo no cierre el programa.
+    """
+    while True:
+        try:
+            mostrar_menu_modulo5()
+            opcion_texto = input("Elige una opción (0-10): ").strip()
+            if opcion_texto == "":
+                print("⚠️ Debes escribir un número.")
+                continue
+            opcion = int(opcion_texto)
+        except ValueError:
+            print("⚠️ Opción inválida: debes escribir un número del 0 al 10.")
+            registrar_log("WARNING", "Menu Modulo 5: opción no numérica")
+            continue
+        except (EOFError, KeyboardInterrupt):
+            print("\n👋 Saliendo...")
+            break
+
+        if opcion == 0:
+            try:
+                print("\n👋 Gracias por usar Software FJ. Saliendo...")
+            finally:
+                registrar_log("INFO", "Menu Modulo 5 cerrado (opción 0)")
+            break
+
+        elif opcion == 1:
+            try:
+                print("\n--- Registrar cliente ---")
+                documento = input("Documento (5-15 dígitos, ej. 12345678): ").strip()
+                nombre = input("Nombre completo: ").strip()
+                correo = input("Correo (ej. nombre@unad.edu.co): ").strip()
+                telefono = input("Teléfono (7-15 dígitos): ").strip()
+                cliente = Cliente(documento=documento, nombre=nombre, correo=correo, telefono=telefono)
+                clientes.append(cliente)
+            except Exception as e:
+                print(f"⚠️ ERROR CONTROLADO: {type(e).__name__}: {e}")
+                registrar_log("ERROR", f"Menu Op.1 error: {e}")
+            else:
+                print(f"✅ Cliente registrado: {cliente}")
+
+        elif opcion == 2:
+            print("\n--- Clientes ---")
+            if not clientes:
+                print("Sin clientes registrados.")
+            else:
+                for c in clientes:
+                    print(f" - {c}")
+
+        elif opcion == 3:
+            print("\n--- Servicios ---")
+            if not servicios:
+                print("Sin servicios registrados.")
+            else:
+                for s in servicios:
+                    print(f" - {s.describir()}")
+
+        elif opcion == 4:
+            try:
+                print("\n--- Crear reserva manual ---")
+                print("Clientes:")
+                for c in clientes:
+                    print(f" - {c}")
+                print("\nServicios:")
+                for s in servicios:
+                    print(f" - ID {s.id} | {s.describir()}")
+                id_r = int(input("\nID reserva (número, ej. 301): ").strip())
+                documento = input("Documento del cliente: ").strip()
+                nombre_serv = input("Nombre exacto del servicio: ").strip()
+                dur = float(input("Duración (número > 0): ").strip())
+                cliente = _modulo5_buscar_cliente(clientes, documento)
+                servicio = _modulo5_buscar_servicio(servicios, nombre_serv)
+                if cliente is None:
+                    print(f"⚠️ No se encontró cliente con documento {documento}.")
+                    continue
+                if servicio is None:
+                    print(f"⚠️ No se encontró servicio '{nombre_serv}'.")
+                    continue
+                reserva = Reserva(id_r, cliente, servicio, dur)
+                reservas.append(reserva)
+            except ValueError:
+                print("⚠️ El ID y la duración deben ser números.")
+            except Exception as e:
+                print(f"⚠️ ERROR CONTROLADO: {type(e).__name__}: {e}")
+            else:
+                print(f"✅ Reserva creada: {reserva.describir()}")
+                print("   Confírmala con 6 y procésala con 8.")
+
+        elif opcion == 5:
+            print("\n--- Reservas ---")
+            if not reservas:
+                print("Sin reservas registradas.")
+            else:
+                for r in reservas:
+                    print(f" - {r.describir()}")
+
+        elif opcion == 6:
+            try:
+                id_r = int(input("ID de la reserva a confirmar: ").strip())
+                reserva = _modulo5_buscar_reserva(reservas, id_r)
+                if reserva is None:
+                    print(f"⚠️ No existe reserva {id_r}.")
+                    continue
+                ok = reserva.confirmar()
+                if ok:
+                    print(f"✅ Reserva {id_r} confirmada.")
+                else:
+                    print(f"⚠️ No se pudo confirmar la reserva {id_r}. Revisa el log.")
+            except ValueError:
+                print("⚠️ El ID debe ser un número.")
+            except Exception as e:
+                print(f"⚠️ ERROR CONTROLADO: {type(e).__name__}: {e}")
+                if getattr(e, "__cause__", None):
+                    print(f"   Causa: {e.__cause__}")
+
+        elif opcion == 7:
+            try:
+                id_r = int(input("ID de la reserva a cancelar: ").strip())
+                reserva = _modulo5_buscar_reserva(reservas, id_r)
+                if reserva is None:
+                    print(f"⚠️ No existe reserva {id_r}.")
+                    continue
+                motivo = input("Motivo (opcional, Enter = Sin motivo): ").strip() or "Sin motivo"
+                ok = reserva.cancelar(motivo)
+                if ok:
+                    print(f"✅ Reserva {id_r} cancelada.")
+                else:
+                    print(f"⚠️ No se pudo cancelar la reserva {id_r} (ya estaba cancelada o procesada).")
+            except ValueError:
+                print("⚠️ El ID debe ser un número.")
+            except Exception as e:
+                print(f"⚠️ ERROR CONTROLADO: {type(e).__name__}: {e}")
+
+        elif opcion == 8:
+            try:
+                id_r = int(input("ID de la reserva a procesar: ").strip())
+                reserva = _modulo5_buscar_reserva(reservas, id_r)
+                if reserva is None:
+                    print(f"⚠️ No existe reserva {id_r}.")
+                    continue
+                ok = reserva.procesar()
+                if ok:
+                    print(f"✅ Reserva {id_r} procesada. Costo: ${reserva.costo_total:,.0f}")
+                else:
+                    print(f"⚠️ No se pudo procesar la reserva {id_r}. Debe estar CONFIRMADA primero (opción 6).")
+            except ValueError:
+                print("⚠️ El ID debe ser un número.")
+            except Exception as e:
+                print(f"⚠️ ERROR CONTROLADO: {type(e).__name__}: {e}")
+
+        elif opcion == 9:
+            try:
+                ejecutar_simulacion_12_operaciones_modulo5(clientes, servicios, reservas)
+            except Exception as e:
+                print(f"⚠️ Error inesperado en simulación: {e}")
+                registrar_log("ERROR", f"Menu Op.9 error: {e}")
+            else:
+                print("\n✅ Simulación completada. Log en eventos.log")
+
+        elif opcion == 10:
+            print("\n--- Reporte ---")
+            print(f"Clientes: {len(clientes)} | Servicios: {len(servicios)} | Reservas: {len(reservas)}")
+            try:
+                print("\n--- Últimas líneas del log (eventos.log) ---")
+                with open(ARCHIVO_LOG, "r", encoding="utf-8") as f:
+                    lineas = f.readlines()
+                for linea in lineas[-15:]:
+                    print(linea.rstrip())
+            except FileNotFoundError:
+                print("⚠️ Aún no hay log. Ejecuta primero la opción 9.")
+            except Exception as e:
+                print(f"⚠️ No se pudo leer el log: {e}")
+
+        else:
+            print("⚠️ Opción fuera de rango. Elige del 0 al 10.")
+            registrar_log("WARNING", f"Menu Modulo 5: opción fuera de rango {opcion}")
+
+        try:
+            input("\nPresiona Enter para volver al menú...")
+        except (EOFError, KeyboardInterrupt):
+            print("\n👋 Saliendo...")
+            break
+
+
+
 if __name__ == "__main__":
     # Configuracion basica solo para ejecutar este archivo individualmente.
     # Al integrarlo, el proyecto grupal puede centralizar la configuracion.
@@ -743,5 +1236,16 @@ if __name__ == "__main__":
     #probar_modulo3()
     #probar_modulo4()
     #ejecutar_pruebas_cliente()
-
-
+    # --- MÓDULO 5: menú por consola + simulación de 12 operaciones ---
+    # Listas del sistema (en memoria, no base de datos, como pide el Anexo 3).
+    _clientes_modulo5 = []
+    _servicios_modulo5 = []
+    _reservas_modulo5 = []
+    # Si no hay consola interactiva (ej. Colab), corre la simulación automática.
+    import sys as _sys_modulo5
+    if _sys_modulo5.stdin.isatty():
+        ejecutar_menu_modulo5(_clientes_modulo5, _servicios_modulo5, _reservas_modulo5)
+    else:
+        print("\n(No hay consola interactiva: se ejecutará la simulación automática de 12 operaciones.)")
+        ejecutar_simulacion_12_operaciones_modulo5(_clientes_modulo5, _servicios_modulo5, _reservas_modulo5)
+        print("\nPara usar el menú interactivo, ejecuta en tu PC:  python main.py  y elige una opción.")
